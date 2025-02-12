@@ -57,13 +57,8 @@ class DocVision(lmms):
 
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
         accelerator = Accelerator(kwargs_handlers=[accelerator_kwargs])
-        self.accelerator = accelerator
-        if accelerator.num_processes > 1:
-            self._device = torch.device(f"cuda:{accelerator.local_process_index}")
-            self.device_map = f"cuda:{accelerator.local_process_index}"
-        else:
-            self._device = torch.device(f"cuda:{accelerator.local_process_index}")
-            self.device_map = f"cuda:{accelerator.local_process_index}"
+        assert accelerator.distributed_type == DistributedType.DEEPSPEED, "Only DistributedType.DEEPSPEED is supported"
+        self._device = torch.device(f"cuda:{accelerator.local_process_index}")
         self.batch_size_per_gpu = int(batch_size)
 
         # Initialize model, tokenizer, image_processor
@@ -73,52 +68,32 @@ class DocVision(lmms):
             checkpoint_path=pretrained,
             test=True,
         )
-        self._model = self._model.to(dtype=torch.bfloat16)
         self._model.eval()
-        stop_token = self.config.test.get("stop_token", None)
-        self._eos_token_id = self.tokenizer.encode(stop_token)[1]
+        self._eos_token_id = self.tokenizer.encode(self.config.test.get("stop_token"))[1]
         self._image_token = self.config.components.lm.image_token
 
-        # Multi-GPU/node handling
-        if accelerator.num_processes > 1:
-            assert accelerator.distributed_type in [DistributedType.FSDP, DistributedType.MULTI_GPU, DistributedType.DEEPSPEED], "Unsupported distributed type provided. Only DDP and FSDP are supported."
-            # If you want to use DistributedType.DEEPSPEED, you have to run accelerate config before using the model
-            # Also, you have to select zero stage 0 (equivalent to DDP) in order to make the prepare model works
-            # I tried to set different parameters in the kwargs to let default zero 2 stage works, but it didn't work.
-            if accelerator.distributed_type == DistributedType.DEEPSPEED:
-                kwargs = {
-                    "fp16": {
-                        "enabled": False
-                    },
-                    "bf16": {
-                        "enabled": True
-                    },
-                    "train_micro_batch_size_per_gpu": self.batch_size_per_gpu,
-                    "train_batch_size": self.batch_size_per_gpu * accelerator.num_processes,
-                    "gradient_accumulation_steps": 1,
-                    "gradient_clipping": 1.0,
-                }
-                AcceleratorState().deepspeed_plugin.deepspeed_config_process(must_match=True, **kwargs)
-                eval_logger.info("Detected that you are using DistributedType.DEEPSPEED. Make sure you run `accelerate config` and set zero stage to 0")
+        # DeepSpeed config
+        kwargs = {
+            "fp16": {
+                "enabled": False
+            },
+            "bf16": {
+                "enabled": True
+            },
+            "train_micro_batch_size_per_gpu": self.batch_size_per_gpu,
+            "train_batch_size": self.batch_size_per_gpu * accelerator.num_processes,
+            "gradient_accumulation_steps": 1,
+            "gradient_clipping": 1.0,
+        }
+        AcceleratorState().deepspeed_plugin.deepspeed_config_process(must_match=True, **kwargs)
+        eval_logger.info("Detected that you are using DistributedType.DEEPSPEED. Make sure you run `accelerate config` and **set zero stage to 0**")
+        self._model = accelerator.prepare(self.model)
+        if accelerator.is_local_main_process:
+            eval_logger.info(f"Using {accelerator.num_processes} devices with data parallelism")
 
-            if accelerator.distributed_type == DistributedType.FSDP or accelerator.distributed_type == DistributedType.DEEPSPEED:
-                self._model = accelerator.prepare(self.model)
-            else:
-                self._model = accelerator.prepare_model(self.model, evaluation_mode=True)
-            if accelerator.is_local_main_process:
-                eval_logger.info(f"Using {accelerator.num_processes} devices with data parallelism")
-
-            self.accelerator = accelerator
-            self._rank = self.accelerator.local_process_index
-            self._world_size = self.accelerator.num_processes
-        else:
-            eval_logger.info(f"Using {accelerator.num_processes} devices with tensor parallelism")
-            self._rank = 0
-            self._world_size = 1
-
-        print(self.model)
-        print("-=-=======")
-        print(self.accelerator)
+        self.accelerator = accelerator
+        self._rank = self.accelerator.local_process_index
+        self._world_size = self.accelerator.num_processes
 
     @property
     def config(self):
