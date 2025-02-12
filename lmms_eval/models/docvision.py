@@ -259,8 +259,8 @@ class DocVision(lmms):
                 gen_kwargs["top_p"] = None
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
-            # if ("eos_token_id" not in gen_kwargs) and (self.eot_token_id is not None):
-            #     gen_kwargs["eos_token_id"] = self.eot_token_id
+            if ("eos_token_id" not in gen_kwargs) and (self.eot_token_id is not None):
+                gen_kwargs["eos_token_id"] = self.eot_token_id
 
             # 3. Prepare batched input_ids and attention_mask
             input_ids_list = [s["input_ids"] for s in processed_batch]
@@ -280,6 +280,7 @@ class DocVision(lmms):
                     pixel_values=pixel_values,
                     image_sizes=image_sizes,
                     pad_token_id=pad_token_ids,
+                    eos_token_id=gen_kwargs["eos_token_id"],
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     do_sample=True if gen_kwargs["temperature"] > 0 else False,
                     temperature=gen_kwargs["temperature"],
