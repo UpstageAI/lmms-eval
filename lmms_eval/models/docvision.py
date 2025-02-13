@@ -11,7 +11,6 @@ from accelerate.state import AcceleratorState
 from omegaconf import OmegaConf
 from PIL import Image
 from tqdm import tqdm
-from transformers.image_processing_utils import select_best_resolution
 
 from lmms_eval import utils
 from lmms_eval.api.instance import Instance
@@ -38,30 +37,34 @@ class DocVision(lmms):
         batch_size: Optional[Union[int, str]] = 1,
         **kwargs,
     ) -> None:
+        super().__init__()
+        if kwargs:
+            raise ValueError(f"Unexpected kwargs: {kwargs}")
+
+        # 1. config 로딩
         def get_config(pretrained):
+            # 저장된 모델 경로의 training_config.yaml 파일을 수정 없이 그대로 사용할 수 있도록, 환경 변수를 변경
             config = OmegaConf.load(os.path.join(pretrained, "training_config.yaml"))
             config.components.architecture.class_name = config.components.architecture.class_name.replace("mllm_engine.models", "lmms_eval.models.docvision_utils")
             config.components.vision_encoder.class_name = config.components.vision_encoder.class_name.replace("mllm_engine.models", "lmms_eval.models.docvision_utils")
             config.components.lm.class_name = config.components.lm.class_name.replace("mllm_engine.models", "lmms_eval.models.docvision_utils")
             config.test.checkpoint_path = pretrained
             return config
-
-        super().__init__()
-        if kwargs:
-            raise ValueError(f"Unexpected kwargs: {kwargs}")
-
-        # Process main args: pretrained, device, batch_size
         self._config = get_config(pretrained)
-        if "Next" not in self.config.components.architecture.class_name:
-            raise ValueError("Config file's architectures[0] does not involve \"Next\" string")
+        self._batch_size_per_gpu = int(batch_size)
+        self._image_token = self.config.components.lm.image_token
+        self._eos_token = self.config.test.get("stop_token")
 
+        # 2. accelerator 초기화
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
-        accelerator = Accelerator(kwargs_handlers=[accelerator_kwargs])
-        assert accelerator.distributed_type == DistributedType.DEEPSPEED, "Only DistributedType.DEEPSPEED is supported"
-        self._device = torch.device(f"cuda:{accelerator.local_process_index}")
-        self.batch_size_per_gpu = int(batch_size)
+        self.accelerator = Accelerator(kwargs_handlers=[accelerator_kwargs])
+        if self.accelerator.is_local_main_process:
+            eval_logger.info(f"Using {self.accelerator.num_processes} devices with data parallelism")
+        self._world_size = self.accelerator.num_processes
+        self._rank = self.accelerator.local_process_index
+        self._device = torch.device(f"cuda:{self.rank}")
 
-        # Initialize model, tokenizer, image_processor
+        # 3. DocVision model, tokenizer, image_processor 초기화
         self._model, self._tokenizer, self._image_processor, _ = init_model(
             cfg=self.config,
             resume_from_checkpoint=True,
@@ -69,10 +72,9 @@ class DocVision(lmms):
             test=True,
         )
         self._model.eval()
-        self._eos_token_id = self.tokenizer.encode(self.config.test.get("stop_token"))[1]
-        self._image_token = self.config.components.lm.image_token
+        self._eos_token_id = self.tokenizer.encode(self._eos_token)[1]
 
-        # DeepSpeed config
+        # 4. DeepSpeed 설정 초기화 및 accelerator 적용
         kwargs = {
             "fp16": {
                 "enabled": False
@@ -81,19 +83,13 @@ class DocVision(lmms):
                 "enabled": True
             },
             "train_micro_batch_size_per_gpu": self.batch_size_per_gpu,
-            "train_batch_size": self.batch_size_per_gpu * accelerator.num_processes,
+            "train_batch_size": self.batch_size_per_gpu * self.world_size,
             "gradient_accumulation_steps": 1,
             "gradient_clipping": 1.0,
         }
         AcceleratorState().deepspeed_plugin.deepspeed_config_process(must_match=True, **kwargs)
+        self._model = self.accelerator.prepare(self.model)
         eval_logger.info("Detected that you are using DistributedType.DEEPSPEED. Make sure you run `accelerate config` and **set zero stage to 0**")
-        self._model = accelerator.prepare(self.model)
-        if accelerator.is_local_main_process:
-            eval_logger.info(f"Using {accelerator.num_processes} devices with data parallelism")
-
-        self.accelerator = accelerator
-        self._rank = self.accelerator.local_process_index
-        self._world_size = self.accelerator.num_processes
 
     @property
     def config(self):
@@ -125,13 +121,9 @@ class DocVision(lmms):
     def image_processor(self):
         return self._image_processor
 
-    # @property
-    # def max_length(self):
-    #     return self._max_length
-
     @property
-    def batch_size(self):
-        return self.batch_size_per_gpu
+    def batch_size_per_gpu(self):
+        return self._batch_size_per_gpu
 
     @property
     def device(self):
@@ -187,7 +179,6 @@ class DocVision(lmms):
         return {
             "pixel_values": pixel_values,
             "image_sizes": image_sizes,
-            # "image_used": image_used,
             "input_ids": input_tokens["input_ids"][0],
             "attention_mask": input_tokens["attention_mask"][0],
         }
@@ -201,7 +192,7 @@ class DocVision(lmms):
 
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
         # TODO
-        assert False, "We have not implemented this function for InstructBLIP yet"
+        assert False, "We have not implemented loglikelihood() method yet."
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
         res = []
@@ -220,8 +211,8 @@ class DocVision(lmms):
         # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
         # in the same batch.
         re_ords = utils.Collator([reg.args for reg in requests], _collate, grouping=True)
-        chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
-        num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
+        chunks = re_ords.get_batched(n=self.batch_size_per_gpu, batch_fn=None)
+        num_iters = len(requests) // self.batch_size_per_gpu if len(requests) % self.batch_size_per_gpu == 0 else len(requests) // self.batch_size_per_gpu + 1
         pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
 
         for chunk in chunks:
@@ -245,12 +236,13 @@ class DocVision(lmms):
                     raise ValueError(f"Expected `gen_kwargs['until']` to be of type Union[str,list] but got {type(until)}")
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
 
-            # 1. prepare input batch
+            # 1. 입력 데이터 전처리
+            #   - 원래 DocVision 의 Dataset 구현에 있던 기능들을 가져옴
             processed_batch = []
             for images, question in zip(visuals, contexts):
                 processed_batch.append(self.process_sample(images, question))
 
-            # 2. Update gen_kwargs
+            # 2. generate 에 필요한 파라미터 설정
             if "max_new_tokens" not in gen_kwargs:
                 gen_kwargs["max_new_tokens"] = 1024
             if "temperature" not in gen_kwargs:
@@ -262,7 +254,7 @@ class DocVision(lmms):
             if ("eos_token_id" not in gen_kwargs) and (self.eot_token_id is not None):
                 gen_kwargs["eos_token_id"] = self.eot_token_id
 
-            # 3. Prepare batched input_ids and attention_mask
+            # 3. 배치 형태로 변형
             input_ids_list = [s["input_ids"] for s in processed_batch]
             pad_token_ids = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.eot_token_id
             input_ids = self.pad_sequence(input_ids_list, batch_first=True, padding_value=pad_token_ids).to(self.device)
@@ -272,7 +264,7 @@ class DocVision(lmms):
             # These steps are not in LLaVA's original code, but are necessary for generation to work
             # TODO: attention to this major generation step...
 
-            # 4. Generate!
+            # 4. 결과 생성 고고!
             try:
                 lm_output = self.model.generate(
                     input_ids=input_ids,
