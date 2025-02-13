@@ -13,7 +13,7 @@ packaging==23.2
 pandas==2.2.1
 peft==0.10.0
 Pillow==10.2.0
-protobuf==4.25.3
+protobuf==3.20.2
 pycocoevalcap==1.2
 pycocotools==2.0.7
 pytablewriter==1.2.0
