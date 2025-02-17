@@ -51,9 +51,11 @@ class DocVision(lmms):
             config.test.checkpoint_path = pretrained
             return config
         self._config = get_config(pretrained)
+
         self._batch_size_per_gpu = int(batch_size)
         self._image_token = self.config.components.lm.image_token
-        self._eos_token = self.config.test.get("stop_token")
+        self._eos_token = self.config.test.get("stop_token", None)
+        assert self._eos_token is not None, "test.stop_token (e.g., <|im_end|>) in training_config.yaml) is not set!"
 
         # 2. accelerator 초기화
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
