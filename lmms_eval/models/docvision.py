@@ -294,18 +294,6 @@ class DocVision(lmms):
                 cont = ""
                 text_outputs = [""]
 
-            # cont_toks_list = cont.tolist()
-            # for cont_toks, context in zip(cont_toks_list, contexts):
-            # discard context + left-padding toks if using causal decoder-only LMM
-            # if self.truncate_context:
-            #     cont_toks = cont_toks[input_ids.shape[1] :]
-            # use secondary stop seqs to cut off should-have-been-stopped content post-hoc
-            # if self.truncate_context:
-            #     for term in until:
-            #         if len(term) > 0:
-            #             # ignore '' separator,
-            #             # for seq2seq case where self.tok_decode(self.eot_token_id) = ''
-            #             text_outputs = text_outputs.split(term)[0]
             res.extend(text_outputs)
             self.cache_hook.add_partial("generate_until", (question, gen_kwargs), text_outputs)
             pbar.update(1)
