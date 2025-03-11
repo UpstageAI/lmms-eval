@@ -71,7 +71,7 @@ class CustomConfig(Config):
 
 
 class TEDS(object):
-    ''' Tree Edit Distance basead Similarity
+    ''' Tree Edit Distance based Similarity
     '''
     def __init__(self, structure_only=False, n_jobs=1, ignore_nodes=None):
         assert isinstance(n_jobs, int) and (n_jobs >= 1), 'n_jobs must be an integer greather than 1'
