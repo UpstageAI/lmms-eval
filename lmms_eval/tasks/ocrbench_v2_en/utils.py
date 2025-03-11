@@ -284,11 +284,11 @@ def ocrbench_v2_en_aggregate_accuracy(results, args):
         "knowledge_reasoning_en"
     ]
 
-    OCRBench_v2_English_subset_score = calculate_average_score(english_tasks)
+    OCRBench_v2_en_English_subset_score = calculate_average_score(english_tasks)
 
-    file_name = generate_submission_file("ocrbench_v2_results.txt", args, subpath="results")
+    file_name = generate_submission_file("ocrbench_v2_en_results.txt", args, subpath="results")
     with open(file_name, "w") as f:
-        print("######################### OCRBench v2 ##########################", file=f)
+        print("######################### OCRBench v2 en ##########################", file=f)
         print("################## All Question Types Scores ###################", file=f)
         for q_type, scores in sorted(question_type_scores.items()):
             avg_score = sum(scores) / len(scores) if len(scores) > 0 else 0
@@ -298,7 +298,7 @@ def ocrbench_v2_en_aggregate_accuracy(results, args):
             num_samples = len(OCRBench_v2_en_score[task])
             avg_score = sum(OCRBench_v2_en_score[task]) / num_samples if num_samples > 0 else 0
             print(f"{task.replace('_', ' ').title()} (Total {num_samples}): {avg_score:.2f}", file=f)
-        print(f"Overall English Score: {OCRBench_v2_English_subset_score:.2f}", file=f)
-    logger.info(f"OCRBench v2 results saved to {file_name}")
+        print(f"Overall English Score: {OCRBench_v2_en_English_subset_score:.2f}", file=f)
+    logger.info(f"OCRBench v2 en results saved to {file_name}")
 
-    return OCRBench_v2_English_subset_score
+    return OCRBench_v2_en_English_subset_score
