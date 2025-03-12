@@ -1,0 +1,11 @@
+numpy
+distance
+apted
+lxml
+zss
+Levenshtein
+editdistance
+nltk
+jieba
+Polygon3
+tqdm

@@ -74,7 +74,7 @@ class DocVision(lmms):
             test=True,
         )
         self._model.eval()
-        self._eos_token_id = self.tokenizer.encode(self._eos_token)[1]
+        self._eos_token_id = self.tokenizer.convert_tokens_to_ids(self._eos_token)
 
         # 4. DeepSpeed 설정 초기화 및 accelerator 적용
         kwargs = {
