@@ -1,9 +1,9 @@
 import os
-from datasets import Dataset
+from datasets import Dataset, DatasetDict
 
 # ref: https://huggingface.co/datasets/upstage/kie-bench
 
-def aggregate_dataset(base_path, bench_name, test_id=0):
+def aggregate_dataset(base_path, bench_name, test_id=0, HF_dataset=[]):
     """
     item example: {'test_id': 'IEX-101', 'bench_type': 'RealKIE', 'doc_type': 'charities', 
                     'doc_name': '00c5f02bb4d35366915b1d44fa610452', 
@@ -49,7 +49,6 @@ def aggregate_dataset(base_path, bench_name, test_id=0):
 
     items = os.listdir(image_dir)
 
-    HF_dataset = []
     # Process each item in the directory
     for item in items:
         doc_name = os.path.basename(item).split(".")[0]
@@ -90,16 +89,20 @@ if __name__ == "__main__":
     base_path = "/app/docfm/datasets/benchmark/key_information_extraction/v3.1"
 
     # universal
-    HF_dataset, test_id = aggregate_dataset(base_path, "KIE-universal")
-    HF_dataset, test_id = aggregate_dataset(base_path, "RealKIE/charities", test_id)
-    HF_dataset, test_id = aggregate_dataset(base_path, "RealKIE/fcc_invoices", test_id)
-    HF_dataset, test_id = aggregate_dataset(base_path, "RealKIE/nda", test_id)
-    HF_dataset, test_id = aggregate_dataset(base_path, "Sensible-Insurance", test_id)
-    HF_dataset, test_id = aggregate_dataset(base_path, "OmniAI-OCR", test_id)
+    HF_dataset = []
+    HF_dataset, test_id = aggregate_dataset(base_path, "KIE-universal", test_id=0, HF_dataset=HF_dataset)
+    HF_dataset, test_id = aggregate_dataset(base_path, "RealKIE/charities", test_id, HF_dataset)
+    HF_dataset, test_id = aggregate_dataset(base_path, "RealKIE/fcc_invoices", test_id, HF_dataset)
+    HF_dataset, test_id = aggregate_dataset(base_path, "RealKIE/nda", test_id, HF_dataset)
+    HF_dataset, test_id = aggregate_dataset(base_path, "Sensible-Insurance", test_id, HF_dataset)
+    HF_dataset, test_id = aggregate_dataset(base_path, "OmniAI-OCR", test_id, HF_dataset)
 
 
     # Create the dataset
     dataset = Dataset.from_list(HF_dataset)
+    # Convert the dataset to a DatasetDict with "test" as the key
+    dataset_dict = DatasetDict({"test": dataset})
+    dataset = dataset_dict
 
     # Save the dataset
     dataset_path = os.path.join('/'.join(base_path.split('/')[:-1]), os.path.basename(base_path)+'_HuggingFace')
