@@ -3,3 +3,4 @@ omegaconf
 hydra-core
 flash-attn
 git+https://github.com/kongds/MoRA.git@main#egg=peft&subdirectory=peft-mora
+pdf2image
