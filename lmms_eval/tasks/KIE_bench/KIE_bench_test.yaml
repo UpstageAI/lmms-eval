@@ -29,7 +29,7 @@ metric_list:
 # Model-specific prompt configurations
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Content to analyze: "
+    pre_prompt: "Extract information from the given image based on this schema: "
     post_prompt: "\n1. If you cannot find the information or the value is not mentioned, return nothing.\n2. If you can find more than one value for a key, return all the values in an array.\n3. Return the value only if the given key’s value exists in the provided content. If it does not exist, return empty string."
 metadata:
   - version: 0.0
