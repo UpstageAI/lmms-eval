@@ -3,4 +3,8 @@ omegaconf
 hydra-core
 flash-attn
 git+https://github.com/kongds/MoRA.git@main#egg=peft&subdirectory=peft-mora
+
+#KIE bench
 pdf2image
+Levenshtein
+rich

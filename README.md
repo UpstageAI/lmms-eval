@@ -42,3 +42,18 @@ scripts/run_eval.sh \
     --gpu_ids 0,1,2,3 \
     --port 35001
 ```
+
+
+### (Optional) KIE_bench 사용을 위한 추가 설정
+- `pdf2image` 파이썬 라이브러리 사용을 위해 `poppler-utils` 설치가 필요합니다.
+    ```
+    apt-get install poppler-utils
+    ```
+
+- Dataset 전처리 (KIE-bench -> KIE-bench huggingface version)
+    - 주의: 이를 통해 생성된 KIE-bench huggingface version에는 일부 정보가 실제 Upstage huggingface uploaded version과 다를 수 있습니다. (다른 부분은 코드 참고) 하지만 사용되지 않는 부분이기에 최신 버전의 KIE bench를 빠르게 적용하기 위해 전처리 코드를 작성하였습니다. 최신 버전의 KIE-bench가 huggingface에 업로드 되어 있는 경우, 해당 데이터를 다운로드 받아 사용하시기 바랍니다.
+    ```
+    # 1. 코드 내 base_path 변수 수정
+    # 2. 아래 코드 실행
+    python preprocessor/KIE_bench_to_HF_dataset.py
+    ```
