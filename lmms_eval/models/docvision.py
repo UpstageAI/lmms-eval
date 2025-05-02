@@ -72,14 +72,8 @@ class DocVision(lmms):
             test=True,
         )
         self._model.eval()
-
-        try:
-            self._eos_token = self._tokenizer.eos_token
-        except AttributeError:
-            # some models do not have eos_token in tokenizer
-            eval_logger.warning("WARNING: tokenizer.eos_token does not exist. Try to use test.stop_token in training_config.yaml instead.")
-            self._eos_token = self.config.test.get("stop_token", None)
-            assert self._eos_token is not None, "test.stop_token (e.g., <|im_end|>) in training_config.yaml is not set!"
+        self._eos_token = self.config.test.get("stop_token", None)
+        assert self._eos_token is not None, "test.stop_token (e.g., <|im_end|>) in training_config.yaml is not set!"
 
         self._eos_token_id = self.tokenizer.convert_tokens_to_ids(self._eos_token)
 
