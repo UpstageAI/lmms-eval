@@ -42,13 +42,8 @@ def KIE_bench_doc_to_text(item, lmms_eval_specific_kwargs=None):
 
     return question
 
-
-
 def KIE_bench_doc_to_target(item):
-    gold_path = item["gold_path"]
-    with open(gold_path, "r") as f:
-        gold = json.load(f)
-    return str(gold)
+    return ""
 
 def parse_pred_ans(pred, schema):
     """
