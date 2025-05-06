@@ -43,6 +43,9 @@ def KIE_bench_doc_to_text(item, lmms_eval_specific_kwargs=None):
     return question
 
 def KIE_bench_doc_to_target(item):
+    # UpScore 계산에는 사용하지 않습니다.
+    # lmms eval 에 자체적으로 구현되어있는 metric을 사용하는 경우에 필요하며,
+    # 만약 KIE bench 데이터셋을 이용해서 다른 metric을 사용하고자 하는 경우에 구현이 필요합니다.
     return ""
 
 def parse_pred_ans(pred, schema):
