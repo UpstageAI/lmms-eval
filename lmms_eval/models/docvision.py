@@ -54,8 +54,6 @@ class DocVision(lmms):
 
         self._batch_size_per_gpu = int(batch_size)
         self._image_token = self.config.components.lm.image_token
-        self._eos_token = self.config.test.get("stop_token", None)
-        assert self._eos_token is not None, "test.stop_token (e.g., <|im_end|>) in training_config.yaml is not set!"
 
         # 2. accelerator 초기화
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
@@ -74,6 +72,9 @@ class DocVision(lmms):
             test=True,
         )
         self._model.eval()
+        self._eos_token = self.config.test.get("stop_token", None)
+        assert self._eos_token is not None, "test.stop_token (e.g., <|im_end|>) in training_config.yaml is not set!"
+
         self._eos_token_id = self.tokenizer.convert_tokens_to_ids(self._eos_token)
 
         # 4. DeepSpeed 설정 초기화 및 accelerator 적용
