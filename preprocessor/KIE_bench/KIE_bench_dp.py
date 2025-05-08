@@ -329,6 +329,7 @@ def main(args, json_input):
 
                 # image paths
                 image_paths = find_images(image_dir)
+                image_paths.extend(find_images(full_leaf_path))
                 
                 # Split images to match the number of processes
                 chunks = [[] for _ in range(num_processes)]
