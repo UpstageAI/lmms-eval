@@ -1,0 +1,41 @@
+task: "KIE_bench_VLM_LLM_IE"
+test_split: test
+
+# Dataset configuration options
+dataset_path: "/app/docfm/datasets/benchmark/key_information_extraction/v3.1_HuggingFace"
+dataset_name: "KIE_bench_VLM_LLM_IE"
+dataset_kwargs: 
+  load_from_disk: true
+process_docs: null
+
+# Prompting / in-context formatting options
+doc_to_visual: !function utils.KIE_bench_doc_to_visual_VLM_LLM_IE
+doc_to_text: !function utils.KIE_bench_doc_to_text_VLM_LLM_IE
+doc_to_target: !function utils.KIE_bench_doc_to_target
+doc_to_choice: null
+
+# Generation settings
+output_type: generate_until
+generation_kwargs: {}
+
+# Post-processing and metrics
+process_results: !function utils.KIE_bench_process_results
+metric_list: 
+  - metric: UpScore
+    aggregation: !function utils.KIE_bench_aggregate_results
+    higher_is_better: true
+    
+
+# Model-specific prompt configurations
+lmms_eval_specific_kwargs:
+  default:
+    vlm_user_prompt: "Describe the image as detail as possible. If there is text in the image, write down the text as well. The extracted information should be in order of human reading."
+    llm_pre_prompt: "Extract information from the given image based on this schema: "
+    llm_post_prompt: "\n1. If you cannot find the information or the value is not mentioned, return nothing.\n2. If you can find more than one value for a key, return all the values in an array.\n3. Return the value only if the given key’s value exists in the provided content. If it does not exist, return empty string.\n4. All the results should be formatted exactly same as the schema."
+metadata:
+  - version: 0.0
+
+
+# Additional metadata
+metadata: 
+  - version: 0.0
