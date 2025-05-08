@@ -70,7 +70,7 @@ def KIE_bench_doc_to_text_VLM_LLM_IE(item, lmms_eval_specific_kwargs=None):
     with open(schema_path, "r") as f:
         schema = json.load(f)
 
-    schema_text = str(schema)
+    schema_text = json.dumps(schema) # json.dumps로 변환하여 문자열로 저장
     if "vlm_user_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["vlm_user_prompt"] != "":
         vlm_user_prompt = lmms_eval_specific_kwargs["vlm_user_prompt"]
     else:
@@ -161,7 +161,12 @@ def KIE_bench_process_results(item, results):
     schema_path = item["schema_path"]
     with open(schema_path, "r") as f:
         schema = json.load(f)
-    pred_result = parse_pred_ans(pred, schema)
+    try:
+        # If the prediction is already in json format, use json.loads (structured output of VLM_LLM_IE)
+        pred_result = json.loads(pred)
+    except Exception as e:
+        # If the prediction is not in json format, use parse_pred_ans
+        pred_result = parse_pred_ans(pred, schema)
 
     # Parse ground truth
     gt_path = item["gold_path"]

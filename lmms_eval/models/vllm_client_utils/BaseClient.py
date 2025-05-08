@@ -3,9 +3,10 @@ BaseClient는 OpenAI API를 사용하여 모델을 호출하는 기본 클래스
 본 코드는 VLM_LLM_IE 모델에서 인퍼런스하기 위한 모듈로 사용됩니다.
 
 ref: https://github.com/UpstageAI/docev-data-engine/blob/main/layout_viewer/viewer_inference_util/BaseClient.py
+- structured output 처리를 위한 기능 추가 및 불필요한 함수 제거 적용
 """
 
-from typing import List
+from typing import List, Union
 from openai import OpenAI
 import base64
 
@@ -34,7 +35,7 @@ class BaseClient:
         else:
             raise ValueError(f"Invalid prompt image type: {self.prompt_image_type}")
 
-    def _chat_completion(self, system_prompt:str, user_prompt:str, image_url_list:List[str]):
+    def _chat_completion(self, system_prompt:str, user_prompt:str, image_url_list:List[str], guided_json:Union[dict, None]):
         messages = []
         if system_prompt and self.use_system_prompt:
             messages.append({
@@ -57,18 +58,26 @@ class BaseClient:
             "role": "user",
             "content": user_content
         })
+        
+        if guided_json is not None:
+            extra_body = {
+                "guided_json": guided_json
+            }
+        else:
+            extra_body = None
 
         chat_completion = self.client.chat.completions.create(
             messages=messages,
             model=self.MODEL,
             max_completion_tokens=self.max_completion_tokens,
             temperature=0,
+            extra_body=extra_body
         )
 
         return chat_completion.choices[0].message.content
 
-    def run(self, system_prompt:str, user_prompt:str, image_url_list:List[str]) -> None:
-        result = self._chat_completion(system_prompt=system_prompt, user_prompt=user_prompt, image_url_list=image_url_list)
+    def run(self, system_prompt:str, user_prompt:str, image_url_list:List[str], guided_json:Union[dict, None]=None) -> None:
+        result = self._chat_completion(system_prompt=system_prompt, user_prompt=user_prompt, image_url_list=image_url_list, guided_json=guided_json)
         return result
     
 def encode_base64_content_from_image(image_path: str) -> str:

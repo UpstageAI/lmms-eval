@@ -132,29 +132,29 @@ class VLM_LLM_IE(lmms):
         # 3. VLM 출력을 기반으로 LLM 입력 프롬프트 생성
         llm_pre_prompt = context_dict["llm_pre_prompt"]
         llm_post_prompt = context_dict["llm_post_prompt"]
-        schema = context_dict["schema"]
-        prompt = f"{vlm_response}{llm_pre_prompt}{schema}{llm_post_prompt}"
+        schema = json.loads(context_dict["schema"])
+        prompt = f"{llm_pre_prompt}{vlm_response}{llm_post_prompt}"
         
         # 4. LLM 모델 인퍼런스
-        llm_response = self.llm_client.run(system_prompt=None, user_prompt=prompt, image_url_list=[])
+        llm_response = self.llm_client.run(system_prompt=None, user_prompt=prompt, image_url_list=[], guided_json=schema)
         
         if progress_bar:
             progress_bar.set_description(f"VLM [{idx+1}/{total}] completed & LLM [{idx+1}/{total}] completed")
             progress_bar.update(1)
         
         # 5. 결과 및 샘플 저장
-        os.makedirs("sample_outputs", exist_ok=True)
-        save_dict = {
-            "llm_output": llm_response,
-            "vlm_output": vlm_response,
-            "context_dict": context_dict,
-            "doc_id": doc_id,
-            "doc": self.task_dict[task][split][doc_id],
-            "vlm_user_prompt": context_dict["vlm_user_prompt"],
-            "llm_user_prompt": f"{vlm_response}{context_dict['llm_pre_prompt']}{context_dict['schema']}{context_dict['llm_post_prompt']}"
-        }
-        with open(f"sample_outputs/{idx}.json", "w") as f:
-            json.dump(save_dict, f)
+        # os.makedirs("sample_outputs", exist_ok=True)
+        # save_dict = {
+        #     "llm_output": llm_response,
+        #     "vlm_output": vlm_response,
+        #     "context_dict": context_dict,
+        #     "doc_id": doc_id,
+        #     "doc": self.task_dict[task][split][doc_id],
+        #     "vlm_user_prompt": context_dict["vlm_user_prompt"],
+        #     "llm_user_prompt": f"{context_dict['llm_pre_prompt']}{vlm_response}{context_dict['llm_post_prompt']}"
+        # }
+        # with open(f"sample_outputs/{idx}.json", "w") as f:
+        #     json.dump(save_dict, f)
             
         return {
             "idx": idx,
