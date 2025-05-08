@@ -130,5 +130,7 @@ $CMD
 
 # Remove temp images
 echo "Remove temp images"
-rm -r temp_images/*
+if [ -d "temp_images" ]; then
+    rm -r temp_images/*
+fi
 echo "Done"
