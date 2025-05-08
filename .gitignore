@@ -46,3 +46,4 @@ scripts/
 .env
 UpScore_results/
 temp_images/
+sample_outputs/
