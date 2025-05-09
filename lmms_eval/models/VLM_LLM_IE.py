@@ -50,8 +50,8 @@ class VLM_LLM_IE(lmms):
         eval_logger.info(f"VLM prompt key: {self.vlm_prompt_key}")
 
         # 2. 모델 초기화 (DP 사용시 각 모델 포트 번호 증가)
-        self.vlm_client = BaseClient(vlm_model_name, vlm_host, vlm_port, vlm_max_completion_tokens)
-        self.llm_client = BaseClient(llm_model_name, llm_host, llm_port, llm_max_completion_tokens)
+        self.vlm_client = BaseClient(vlm_model_name, vlm_host, vlm_port, max_completion_tokens=vlm_max_completion_tokens)
+        self.llm_client = BaseClient(llm_model_name, llm_host, llm_port, max_completion_tokens=llm_max_completion_tokens)
         
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
