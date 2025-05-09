@@ -69,7 +69,6 @@ class VLM_LLM_IE(lmms):
     async def _async_generate_until(self, requests: List[Instance]) -> List[str]:
         """비동기 처리를 위한 내부 메소드"""
         total = len(requests)
-        results = [None] * total
         
         # 프로그레스바 (메인 프로세스에서만 표시)
         pbar = tqdm(total=total, disable=(self._rank != 0), desc="Processing")
@@ -93,11 +92,7 @@ class VLM_LLM_IE(lmms):
         completed_results = await asyncio.gather(*tasks)
         pbar.close()
         
-        # 결과 정렬 (인덱스 순서대로)
-        for result in completed_results:
-            idx = result["idx"]
-            results[idx] = result["llm_response"]
-            
+        results = [result["llm_response"] for result in completed_results]
         return results
 
     async def _process_single_request(self, request, idx, total, progress_bar=None):
