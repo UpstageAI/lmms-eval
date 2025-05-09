@@ -110,7 +110,10 @@ class VLM_LLM_IE(lmms):
         vlm_user_prompt = context_dict[self.vlm_prompt_key]
 
         # 2. VLM 모델 인퍼런스
-        vlm_response = self.vlm_client.run(system_prompt=None, user_prompt=vlm_user_prompt, image_url_list=image_url_list)
+        if vlm_user_prompt == "NO VLM INFERENCE":
+            vlm_response = context_dict["vlm_output"]
+        else:
+            vlm_response = self.vlm_client.run(system_prompt=None, user_prompt=vlm_user_prompt, image_url_list=image_url_list)
         
         if progress_bar:
             progress_bar.set_description(f"VLM [{idx+1}/{total}] completed & LLM [{idx}/{total}] completed")
@@ -121,8 +124,13 @@ class VLM_LLM_IE(lmms):
         schema = json.loads(context_dict["schema"])
         prompt = f"{llm_pre_prompt}{vlm_response}{llm_post_prompt}"
         
-        # 4. LLM 모델 인퍼런스
-        llm_response = self.llm_client.run(system_prompt=None, user_prompt=prompt, image_url_list=[], guided_json=schema)
+        # 4. LLM 모델 인퍼런스 (context length 초과 오류 발생 시 오류 메시지 출력)
+        try:
+            llm_response = self.llm_client.run(system_prompt=None, user_prompt=prompt, image_url_list=[], guided_json=schema)
+        except Exception as e:
+            # context length 초과 오류 발생 시 오류 메시지 출력
+            eval_logger.error(f"Error in LLM inference: {e}")
+            llm_response = ""
         
         if progress_bar:
             progress_bar.set_description(f"VLM [{idx+1}/{total}] completed & LLM [{idx+1}/{total}] completed")
@@ -140,7 +148,7 @@ class VLM_LLM_IE(lmms):
         #     "llm_user_prompt": f"{context_dict['llm_pre_prompt']}{vlm_response}{context_dict['llm_post_prompt']}"
         # }
         # with open(f"sample_outputs/{idx}.json", "w") as f:
-        #     json.dump(save_dict, f)
+        #     json.dump(save_dict, f, indent=4)
             
         return {
             "idx": idx,

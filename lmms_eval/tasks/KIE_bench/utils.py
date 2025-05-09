@@ -98,6 +98,55 @@ def KIE_bench_doc_to_text_VLM_LLM_IE(item, lmms_eval_specific_kwargs=None):
 
     return json.dumps(context_dict) # string타입만 가능하므로 json.dumps로 우회
 
+def _read_DP_json(DP_json_path):
+    DP_json_dir = os.path.dirname(DP_json_path)
+    DP_json_list = [os.path.join(DP_json_dir, p) for p in os.listdir(DP_json_dir) if p.startswith(os.path.basename(DP_json_path).split('.')[0])]
+    DP_json_list = sorted(DP_json_list)
+    json_text = ""
+    for DP_json in DP_json_list:
+        with open(DP_json, "r") as f:
+            DP_json = json.load(f)
+        json_text += json.dumps(DP_json) + "\n"
+    return json_text
+
+def KIE_bench_doc_to_text_DP_LLM_IE(item, lmms_eval_specific_kwargs=None):
+    schema_path = item["schema_path"]
+    with open(schema_path, "r") as f:
+        schema = json.load(f)
+
+    schema_text = json.dumps(schema) # json.dumps로 변환하여 문자열로 저장
+    vlm_user_prompt = "NO VLM INFERENCE"
+
+    if "llm_pre_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["llm_pre_prompt"] != "":
+        llm_pre_prompt = lmms_eval_specific_kwargs["llm_pre_prompt"]
+    else:
+        llm_pre_prompt = ""
+    if "llm_post_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["llm_post_prompt"] != "":
+        llm_post_prompt = lmms_eval_specific_kwargs["llm_post_prompt"]
+    else:
+        llm_post_prompt = ""
+
+    # read DP and set the prompt
+    DP_json_path = item["file_path"].replace("/v3.1/","/v3.1_dp/") # TODO: v3.1은 bench version update되면 수정해야함. 하드코딩된 부분을 추후 외부에서 입력하도록 수정 필요.
+    json_text = _read_DP_json(DP_json_path)
+
+    if "pre_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["pre_prompt"] != "":
+        question = f"{lmms_eval_specific_kwargs['pre_prompt']}{json_text}"
+    if "post_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["post_prompt"] != "":
+        question = f"{question}{lmms_eval_specific_kwargs['post_prompt']}"
+    else:
+        question = json_text
+    
+    context_dict = {
+        "schema": schema_text,
+        "vlm_user_prompt": vlm_user_prompt,
+        "llm_pre_prompt": llm_pre_prompt,
+        "llm_post_prompt": llm_post_prompt,
+        "vlm_output": json_text
+    }
+
+    return json.dumps(context_dict) # string타입만 가능하므로 json.dumps로 우회
+
 
 def KIE_bench_doc_to_target(item):
     # UpScore 계산에는 사용하지 않습니다.
