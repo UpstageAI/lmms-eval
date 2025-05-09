@@ -45,8 +45,8 @@ class VLM_LLM_IE(lmms):
     ) -> None:
         super().__init__()
         assert batch_size == 1, "batch_size must be 1"
-
-        self.vlm_prompt_key = "DocEV_DP_user_prompt" if "docev_dp" in vlm_model_name.lower() else "vlm_user_prompt"
+        use_docev_dp = "docev_dp" in vlm_model_name.lower() or "docevdp" in vlm_model_name.lower() or "docev-dp" in vlm_model_name.lower()
+        self.vlm_prompt_key = "DocEV_DP_user_prompt" if use_docev_dp else "vlm_user_prompt"
         eval_logger.info(f"VLM prompt key: {self.vlm_prompt_key}")
 
         # 2. 모델 초기화 (DP 사용시 각 모델 포트 번호 증가)
