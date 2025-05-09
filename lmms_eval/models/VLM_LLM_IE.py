@@ -49,6 +49,9 @@ class VLM_LLM_IE(lmms):
         self.vlm_prompt_key = "DocEV_DP_user_prompt" if use_docev_dp else "vlm_user_prompt"
         eval_logger.info(f"VLM prompt key: {self.vlm_prompt_key}")
 
+        self.vlm_prompt_key = "DocEV_DP_user_prompt" if "docev_dp" in vlm_model_name.lower() else "vlm_user_prompt"
+        eval_logger.info(f"VLM prompt key: {self.vlm_prompt_key}")
+
         # 2. 모델 초기화 (DP 사용시 각 모델 포트 번호 증가)
         self.vlm_client = BaseClient(vlm_model_name, vlm_host, vlm_port, max_completion_tokens=vlm_max_completion_tokens)
         self.llm_client = BaseClient(llm_model_name, llm_host, llm_port, max_completion_tokens=llm_max_completion_tokens)
