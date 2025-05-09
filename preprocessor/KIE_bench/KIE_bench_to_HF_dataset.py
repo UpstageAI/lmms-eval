@@ -47,7 +47,7 @@ def aggregate_dataset(base_path, bench_name, test_id=0, HF_dataset=[]):
     schema_dir = os.path.join(bench_path, "schema")
     gold_result_dir = os.path.join(bench_path, "gold_result")
 
-    items = os.listdir(image_dir)
+    items = sorted(os.listdir(image_dir))
 
     # Process each item in the directory
     for item in items:
