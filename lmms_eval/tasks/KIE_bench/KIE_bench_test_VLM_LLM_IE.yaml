@@ -2,8 +2,8 @@ task: "KIE_bench_VLM_LLM_IE"
 test_split: test
 
 # Dataset configuration options
-dataset_path: "/app/docfm/datasets/benchmark/key_information_extraction/v3.1_HuggingFace"
-dataset_name: "KIE_bench_VLM_LLM_IE"
+dataset_path: "/app/docfm/datasets/benchmark/key_information_extraction/v3.1_HuggingFace/"
+dataset_name: "KIE_bench"
 dataset_kwargs: 
   load_from_disk: true
 process_docs: null
@@ -30,6 +30,7 @@ metric_list:
 lmms_eval_specific_kwargs:
   default:
     vlm_user_prompt: "Describe the image as detail as possible. If there is text in the image, write down the text as well. The extracted information should be in order of human reading."
+    DocEV_DP_user_prompt: "Convert the input document image into the structured HTML format of the Upstage Document Parse."
     llm_pre_prompt: "Content to analyze: "
     llm_post_prompt: "\n\n1. If you cannot find the information or the value is not mentioned, return nothing.\n2. If you can find more than one value for a key, return all the values in an array.\n3. Return the value only if the given key’s value exists in the provided content. If it does not exist, return empty string."
 metadata:

@@ -46,6 +46,9 @@ class VLM_LLM_IE(lmms):
         super().__init__()
         assert batch_size == 1, "batch_size must be 1"
 
+        self.vlm_prompt_key = "DocEV_DP_user_prompt" if "docev_dp" in vlm_model_name.lower() else "vlm_user_prompt"
+        eval_logger.info(f"VLM prompt key: {self.vlm_prompt_key}")
+
         # 2. 모델 초기화 (DP 사용시 각 모델 포트 번호 증가)
         self.vlm_client = BaseClient(vlm_model_name, vlm_host, vlm_port, vlm_max_completion_tokens)
         self.llm_client = BaseClient(llm_model_name, llm_host, llm_port, llm_max_completion_tokens)
@@ -101,7 +104,7 @@ class VLM_LLM_IE(lmms):
         context_dict, gen_kwargs, doc_to_visual, doc_id, task, split = request.arguments
         context_dict = json.loads(context_dict)
         image_url_list = doc_to_visual(self.task_dict[task][split][doc_id])
-        vlm_user_prompt = context_dict["vlm_user_prompt"]
+        vlm_user_prompt = context_dict[self.vlm_prompt_key]
 
         # 2. VLM 모델 인퍼런스
         vlm_response = self.vlm_client.run(system_prompt=None, user_prompt=vlm_user_prompt, image_url_list=image_url_list)

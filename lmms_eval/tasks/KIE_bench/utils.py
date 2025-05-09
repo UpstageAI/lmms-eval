@@ -83,12 +83,17 @@ def KIE_bench_doc_to_text_VLM_LLM_IE(item, lmms_eval_specific_kwargs=None):
         llm_post_prompt = lmms_eval_specific_kwargs["llm_post_prompt"]
     else:
         llm_post_prompt = ""
+    if "DocEV_DP_user_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["DocEV_DP_user_prompt"] != "":
+        DocEV_DP_user_prompt = lmms_eval_specific_kwargs["DocEV_DP_user_prompt"]
+    else:
+        DocEV_DP_user_prompt = ""
 
     context_dict = {
         "schema": schema_text,
         "vlm_user_prompt": vlm_user_prompt,
         "llm_pre_prompt": llm_pre_prompt,
-        "llm_post_prompt": llm_post_prompt
+        "llm_post_prompt": llm_post_prompt,
+        "DocEV_DP_user_prompt": DocEV_DP_user_prompt
     }
 
     return json.dumps(context_dict) # string타입만 가능하므로 json.dumps로 우회
