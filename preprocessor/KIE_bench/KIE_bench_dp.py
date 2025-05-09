@@ -320,7 +320,7 @@ def main(args, json_input):
 
                 # pdf to image conversion
                 pdf_paths = find_pdfs(full_leaf_path)
-                image_dir = full_leaf_path.replace(args.input_dir, args.output_dir)
+                image_dir = full_leaf_path.replace(args.input_dir, os.path.join(args.output_dir, "pdf_images/"))
                 os.makedirs(image_dir, exist_ok=True)
                 for pdf_path in pdf_paths:
                     images = convert_from_path(pdf_path)
