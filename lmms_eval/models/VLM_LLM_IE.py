@@ -45,25 +45,10 @@ class VLM_LLM_IE(lmms):
     ) -> None:
         super().__init__()
         assert batch_size == 1, "batch_size must be 1"
-        self.threads = threads
-
-        # 1. accelerator 초기화
-        accelerator = Accelerator()
-        if accelerator.num_processes > 1:
-            assert accelerator.distributed_type in [DistributedType.FSDP, DistributedType.MULTI_GPU, DistributedType.DEEPSPEED], "Unsupported distributed type provided. Only DDP and FSDP are supported."
-            self.accelerator = accelerator
-            if self.accelerator.is_local_main_process:
-                eval_logger.info(f"Using {accelerator.num_processes} devices with data parallelism")
-            self._rank = self.accelerator.local_process_index
-            self._world_size = self.accelerator.num_processes
-        else:
-            self.accelerator = accelerator
-            self._rank = self.accelerator.local_process_index
-            self._world_size = self.accelerator.num_processes
 
         # 2. 모델 초기화 (DP 사용시 각 모델 포트 번호 증가)
-        self.vlm_client = BaseClient(vlm_model_name, vlm_host, vlm_port+self._rank, vlm_max_completion_tokens)
-        self.llm_client = BaseClient(llm_model_name, llm_host, llm_port+self._rank, llm_max_completion_tokens)
+        self.vlm_client = BaseClient(vlm_model_name, vlm_host, vlm_port, vlm_max_completion_tokens)
+        self.llm_client = BaseClient(llm_model_name, llm_host, llm_port, llm_max_completion_tokens)
         
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
