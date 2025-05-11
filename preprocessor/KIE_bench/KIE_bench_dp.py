@@ -234,7 +234,7 @@ def process_image(args_tuple):
     global model_pipeline
     image_path, leaf_dir, args, json_input = args_tuple
     
-    save_root_dir = os.path.join(args.output_dir,"dp_result/", leaf_dir)
+    save_root_dir = os.path.join(args.output_dir,"dp_result/raw/", leaf_dir)
     os.makedirs(save_root_dir, exist_ok=True)
     
     save_path = os.path.join(save_root_dir, os.path.basename(image_path) + ".json")
