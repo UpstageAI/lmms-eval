@@ -98,15 +98,14 @@ def KIE_bench_doc_to_text_VLM_LLM_IE(item, lmms_eval_specific_kwargs=None):
 
     return json.dumps(context_dict) # string타입만 가능하므로 json.dumps로 우회
 
-def _read_DP_json_and_convert_to_html(DP_json_path):
-    DP_json_dir = os.path.dirname(DP_json_path)
-    DP_json_list = [os.path.join(DP_json_dir, p) for p in os.listdir(DP_json_dir) if p.startswith(os.path.basename(DP_json_path).split('.')[0])]
-    DP_json_list = sorted(DP_json_list)
+def _read_DP_HTML(DP_html_path):
+    DP_html_dir = os.path.dirname(DP_html_path)
+    DP_html_list = [os.path.join(DP_html_dir, p) for p in os.listdir(DP_html_dir) if p.startswith(os.path.basename(DP_html_path).split('.')[0])]
+    DP_html_list = sorted(DP_html_list)
     html_text = ""
-    for DP_json in DP_json_list:
-        with open(DP_json, "r") as f:
-            DP_json = json.load(f)
-        html_text += DP_json["html"] + "\n"
+    for DP_html in DP_html_list:
+        with open(DP_html, "r") as f:
+            html_text += f.read() + "\n"
     return html_text
 
 def KIE_bench_doc_to_text_DP_LLM_IE(item, lmms_eval_specific_kwargs=None):
@@ -127,16 +126,12 @@ def KIE_bench_doc_to_text_DP_LLM_IE(item, lmms_eval_specific_kwargs=None):
         llm_post_prompt = ""
 
     # read DP and set the prompt
-    DP_json_path = item["file_path"].replace("/v3.1/","/v3.1/dp_result/") # TODO: v3.1은 bench version update되면 수정해야함. 하드코딩된 부분을 추후 외부에서 입력하도록 수정 필요.
-    html_text = _read_DP_json_and_convert_to_html(DP_json_path)
+    DP_html_path = item["file_path"].replace("/v3.1/","/v3.1/dp_result/html/") # TODO: v3.1은 bench version update되면 수정해야함. 하드코딩된 부분을 추후 외부에서 입력하도록 수정 필요.
+    html_text = _read_DP_HTML(DP_html_path)
+    with open("./temp_html.txt", "w") as f:
+        f.write(DP_html_path)
+        f.write(html_text)
 
-    if "pre_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["pre_prompt"] != "":
-        question = f"{lmms_eval_specific_kwargs['pre_prompt']}{html_text}"
-    if "post_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["post_prompt"] != "":
-        question = f"{question}{lmms_eval_specific_kwargs['post_prompt']}"
-    else:
-        question = html_text
-    
     context_dict = {
         "schema": schema_text,
         "vlm_user_prompt": vlm_user_prompt,
