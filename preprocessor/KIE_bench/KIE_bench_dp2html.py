@@ -32,7 +32,6 @@ from functools import partial
 from p_tqdm import p_map
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from utils import find_files, parse
 
 
 
@@ -221,9 +220,9 @@ def _get_enriched_html(data):
             soup = BeautifulSoup(html_str, "html.parser")
         except Exception as e:
             # 파싱 실패 샘플은 빈 문자열로 처리
-            return "", 0, 0
+            return ""
     else:
-        return "", 0, 0
+        return ""
 
 
     # 2. alt 어트리뷰트 모두 제거
@@ -241,9 +240,9 @@ def _get_enriched_html(data):
 # 주요 변경 사항:
 # - 이미지 사이즈 정보를 표기하지 않습니다.
 # - 데이터 필터링 과정 제거
-def parse(args):
+def parse(args, input_dir):
     idx, rel_path = args
-    abs_path = os.path.join(args.input_dir, rel_path)
+    abs_path = os.path.join(input_dir, rel_path)
 
     # json 파일 파싱
     try:
@@ -253,12 +252,11 @@ def parse(args):
         raise Exception(f"Error parsing json file: {abs_path}")
 
     # 명세에 따라 필드 추출
-    name = data.get("annotation_log", {}).get("timestamp", "")
     text = _get_enriched_html(data)
 
     return {
         "id": str(idx),
-        "name": name,
+        "rel_path": rel_path,
         "text": text,
     }
 
@@ -283,10 +281,16 @@ def convert(args):
     print("3. html 파일 저장...")
     for result in results:
         if result["text"]:
-            with open(os.path.join(args.output_dir, f"{result['name']}.html"), "w", encoding="utf-8") as f:
+            html_path = os.path.join(args.output_dir, result['rel_path'].replace(".json", ".html"))
+            os.makedirs(os.path.dirname(html_path), exist_ok=True)
+            with open(html_path, "w", encoding="utf-8") as f:
                 f.write(result["text"])
-        if not result["text"]:
-            raise Exception(f"Error: {result['name']} has no text")
+        else:
+            # Empty result in json file
+            print(f"Error: {os.path.join(args.input_dp_dir, result['rel_path'])} has no text")
+            with open(html_path, "w", encoding="utf-8") as f:
+                f.write("")
+            continue
 
     print(f"- 저장 완료: {len(results)} 샘플")
 
