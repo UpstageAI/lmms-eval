@@ -73,3 +73,17 @@ scripts/run_eval.sh \
             --llm_max_tokens 32768 \
             --port 35000
         ```
+
+4. DP 결과 HTML로 inference하는 방법
+    ```
+    bash scripts/run_eval_DP_LLM_IE.sh \
+        --vlm_model_name "_" \
+        --llm_model_name "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" \
+        --vlm_port -1 \
+        --llm_port 8005 \
+        --vlm_host "_" \
+        --llm_host "192.168.1.5" \
+        --vlm_max_tokens 0 \
+        --llm_max_tokens 32768 \
+        --port 35000
+    ```
