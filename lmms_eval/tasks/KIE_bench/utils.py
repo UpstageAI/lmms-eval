@@ -128,9 +128,6 @@ def KIE_bench_doc_to_text_DP_LLM_IE(item, lmms_eval_specific_kwargs=None):
     # read DP and set the prompt
     DP_html_path = item["file_path"].replace("/v3.1/","/v3.1/dp_result/html/") # TODO: v3.1은 bench version update되면 수정해야함. 하드코딩된 부분을 추후 외부에서 입력하도록 수정 필요.
     html_text = _read_DP_HTML(DP_html_path)
-    with open("./temp_html.txt", "w") as f:
-        f.write(DP_html_path)
-        f.write(html_text)
 
     context_dict = {
         "schema": schema_text,
