@@ -3,6 +3,7 @@ import json
 import numpy as np
 from PIL import Image
 from pdf2image import convert_from_path
+import uuid
 from pathlib import Path
 import glob
 from typing import Dict, Any, Union
@@ -29,8 +30,30 @@ def KIE_bench_doc_to_visual(item):
         return [image]
     return images
 
+def KIE_bench_doc_to_visual_VLM_LLM_IE(item):
+    """
+    For vllm serving, save the temporary images and return the image paths to the item
+    """
+    image_path = item["file_path"]
+    if image_path.endswith(".pdf"):
+        images = convert_from_path(image_path)
+        os.makedirs("temp_images", exist_ok=True)
+        image_paths = []
+        for image in images:
+            image_path = f"temp_images/{uuid.uuid4()}.png"
+            image.save(image_path)
+            image_paths.append(image_path)
+    else:
+        image = Image.open(image_path).convert("RGB")
+        image_path = f"temp_images/{uuid.uuid4()}.png"
+        image.save(image_path)
+        image_paths = [image_path]
+
+    return image_paths
+
+
+
 def KIE_bench_doc_to_text(item, lmms_eval_specific_kwargs=None):
-    # TODO: apply response_format
     schema_path = item["schema_path"]
     with open(schema_path, "r") as f:
         schema = json.load(f)
@@ -41,6 +64,40 @@ def KIE_bench_doc_to_text(item, lmms_eval_specific_kwargs=None):
         question = f"{question}{lmms_eval_specific_kwargs['post_prompt']}"
 
     return question
+
+def KIE_bench_doc_to_text_VLM_LLM_IE(item, lmms_eval_specific_kwargs=None):
+    schema_path = item["schema_path"]
+    with open(schema_path, "r") as f:
+        schema = json.load(f)
+
+    schema_text = json.dumps(schema) # json.dumps로 변환하여 문자열로 저장
+    if "vlm_user_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["vlm_user_prompt"] != "":
+        vlm_user_prompt = lmms_eval_specific_kwargs["vlm_user_prompt"]
+    else:
+        vlm_user_prompt = ""
+    if "llm_pre_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["llm_pre_prompt"] != "":
+        llm_pre_prompt = lmms_eval_specific_kwargs["llm_pre_prompt"]
+    else:
+        llm_pre_prompt = ""
+    if "llm_post_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["llm_post_prompt"] != "":
+        llm_post_prompt = lmms_eval_specific_kwargs["llm_post_prompt"]
+    else:
+        llm_post_prompt = ""
+    if "DocEV_DP_user_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["DocEV_DP_user_prompt"] != "":
+        DocEV_DP_user_prompt = lmms_eval_specific_kwargs["DocEV_DP_user_prompt"]
+    else:
+        DocEV_DP_user_prompt = ""
+
+    context_dict = {
+        "schema": schema_text,
+        "vlm_user_prompt": vlm_user_prompt,
+        "llm_pre_prompt": llm_pre_prompt,
+        "llm_post_prompt": llm_post_prompt,
+        "DocEV_DP_user_prompt": DocEV_DP_user_prompt
+    }
+
+    return json.dumps(context_dict) # string타입만 가능하므로 json.dumps로 우회
+
 
 def KIE_bench_doc_to_target(item):
     # UpScore 계산에는 사용하지 않습니다.
@@ -109,7 +166,12 @@ def KIE_bench_process_results(item, results):
     schema_path = item["schema_path"]
     with open(schema_path, "r") as f:
         schema = json.load(f)
-    pred_result = parse_pred_ans(pred, schema)
+    try:
+        # If the prediction is already in json format, use json.loads (structured output of VLM_LLM_IE)
+        pred_result = json.loads(pred)
+    except Exception as e:
+        # If the prediction is not in json format, use parse_pred_ans
+        pred_result = parse_pred_ans(pred, schema)
 
     # Parse ground truth
     gt_path = item["gold_path"]
