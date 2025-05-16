@@ -35,7 +35,7 @@ class BaseClient:
         else:
             raise ValueError(f"Invalid prompt image type: {self.prompt_image_type}")
 
-    def _chat_completion(self, system_prompt:str, user_prompt:str, image_url_list:List[str], guided_json:Union[dict, None]):
+    def _make_prompt(self, system_prompt:str, user_prompt:str, image_url_list:List[str], guided_json:Union[dict, None]=None):
         messages = []
         if system_prompt and self.use_system_prompt:
             messages.append({
@@ -58,13 +58,17 @@ class BaseClient:
             "role": "user",
             "content": user_content
         })
-        
+
         if guided_json is not None:
             extra_body = {
                 "guided_json": guided_json
             }
         else:
-            extra_body = None
+            extra_body = None   
+        return messages, extra_body
+
+    def _chat_completion(self, system_prompt:str, user_prompt:str, image_url_list:List[str], guided_json:Union[dict, None]=None):
+        messages, extra_body = self._make_prompt(system_prompt, user_prompt, image_url_list, guided_json)
 
         chat_completion = self.client.chat.completions.create(
             messages=messages,
@@ -75,6 +79,7 @@ class BaseClient:
         )
 
         return chat_completion.choices[0].message.content
+
 
     def run(self, system_prompt:str, user_prompt:str, image_url_list:List[str], guided_json:Union[dict, None]=None) -> None:
         result = self._chat_completion(system_prompt=system_prompt, user_prompt=user_prompt, image_url_list=image_url_list, guided_json=guided_json)

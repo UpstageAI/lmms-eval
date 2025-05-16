@@ -14,8 +14,7 @@ from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 
-from lmms_eval.models.vllm_client_utils.BaseClient import BaseClient
-
+from lmms_eval.models.vllm_client_utils.AsyncClient import AsyncOpenAIPool
 @register_model("VLM_LLM_IE")
 class VLM_LLM_IE(lmms):
     """
@@ -53,8 +52,8 @@ class VLM_LLM_IE(lmms):
         eval_logger.info(f"VLM prompt key: {self.vlm_prompt_key}")
 
         # 2. 모델 초기화 (DP 사용시 각 모델 포트 번호 증가)
-        self.vlm_client = BaseClient(vlm_model_name, vlm_host, vlm_port, max_completion_tokens=vlm_max_completion_tokens)
-        self.llm_client = BaseClient(llm_model_name, llm_host, llm_port, max_completion_tokens=llm_max_completion_tokens)
+        self.vlm_client = AsyncOpenAIPool(vlm_model_name, vlm_host, vlm_port,  max_completion_tokens=vlm_max_completion_tokens)
+        self.llm_client = AsyncOpenAIPool(llm_model_name, llm_host, llm_port, max_completion_tokens=llm_max_completion_tokens)
         
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
@@ -79,8 +78,8 @@ class VLM_LLM_IE(lmms):
         # 프로그레스바 (메인 프로세스에서만 표시)
         pbar = tqdm(total=total, disable=(self._rank != 0), desc="Processing")
         
-        # 동시 실행 제한을 위한 세마포어 (최대 4개의 async 요청 동시 실행. vllm server에 동시에 수백~수천개의 인퍼런스 요청이 가지 않도록 제한하는 역할)
-        semaphore = asyncio.Semaphore(4)
+        # 동시 실행 제한을 위한 세마포어 (최대 100개의 async 요청 동시 실행. vllm server에 동시에 수백~수천개의 인퍼런스 요청이 가지 않도록 제한하는 역할)
+        semaphore = asyncio.Semaphore(100)
         
         async def _process_single_request_limited(request, idx, total):
             async with semaphore:
@@ -113,27 +112,24 @@ class VLM_LLM_IE(lmms):
         if vlm_user_prompt == "NO VLM INFERENCE":
             vlm_response = context_dict["vlm_output"]
         else:
-            vlm_response = self.vlm_client.run(system_prompt=None, user_prompt=vlm_user_prompt, image_url_list=image_url_list)
+            vlm_response = await asyncio.wait_for(
+                self.vlm_client._chat_completion(system_prompt="", user_prompt=vlm_user_prompt, image_url_list=image_url_list),
+                timeout=900  # 15분 타임아웃 설정 -> 타임아웃 나면 거의 100% 모델 죽음
+            )
         
-        if progress_bar:
-            progress_bar.set_description(f"VLM [{idx+1}/{total}] completed & LLM [{idx}/{total}] completed")
-
         # 3. VLM 출력을 기반으로 LLM 입력 프롬프트 생성
         llm_pre_prompt = context_dict["llm_pre_prompt"]
         llm_post_prompt = context_dict["llm_post_prompt"]
         schema = json.loads(context_dict["schema"])
         prompt = f"{llm_pre_prompt}{vlm_response}{llm_post_prompt}"
         
-        # 4. LLM 모델 인퍼런스 (context length 초과 오류 발생 시 오류 메시지 출력)
-        try:
-            llm_response = self.llm_client.run(system_prompt=None, user_prompt=prompt, image_url_list=[], guided_json=schema)
-        except Exception as e:
-            # context length 초과 오류 발생 시 오류 메시지 출력
-            eval_logger.error(f"Error in LLM inference: {e}")
-            llm_response = ""
+        # 4. LLM 모델 인퍼런스
+        llm_response = await asyncio.wait_for(
+            self.llm_client.run(system_prompt=None, user_prompt=prompt, image_url_list=[], guided_json=schema),
+            timeout=900  # 15분 타임아웃 설정 -> 타임아웃 나면 거의 100% 모델 죽음
+        )
         
         if progress_bar:
-            progress_bar.set_description(f"VLM [{idx+1}/{total}] completed & LLM [{idx+1}/{total}] completed")
             progress_bar.update(1)
         
         # 5. 결과 및 샘플 저장
@@ -144,7 +140,7 @@ class VLM_LLM_IE(lmms):
         #     "context_dict": context_dict,
         #     "doc_id": doc_id,
         #     "doc": self.task_dict[task][split][doc_id],
-        #     "vlm_user_prompt": context_dict["vlm_user_prompt"],
+        #     "vlm_user_prompt": context_dict[self.vlm_prompt_key],
         #     "llm_user_prompt": f"{context_dict['llm_pre_prompt']}{vlm_response}{context_dict['llm_post_prompt']}"
         # }
         # with open(f"sample_outputs/{idx}.json", "w") as f:
