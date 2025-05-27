@@ -98,6 +98,47 @@ def KIE_bench_doc_to_text_VLM_LLM_IE(item, lmms_eval_specific_kwargs=None):
 
     return json.dumps(context_dict) # string타입만 가능하므로 json.dumps로 우회
 
+def _read_DP_HTML(DP_html_path):
+    DP_html_dir = os.path.dirname(DP_html_path)
+    DP_html_list = [os.path.join(DP_html_dir, p) for p in os.listdir(DP_html_dir) if p.startswith(os.path.basename(DP_html_path).split('.')[0])]
+    DP_html_list = sorted(DP_html_list)
+    html_text = ""
+    for DP_html in DP_html_list:
+        with open(DP_html, "r") as f:
+            html_text += f.read() + "\n"
+    return html_text
+
+def KIE_bench_doc_to_text_DP_LLM_IE(item, lmms_eval_specific_kwargs=None):
+    schema_path = item["schema_path"]
+    with open(schema_path, "r") as f:
+        schema = json.load(f)
+
+    schema_text = json.dumps(schema) # json.dumps로 변환하여 문자열로 저장
+    vlm_user_prompt = "NO VLM INFERENCE"
+
+    if "llm_pre_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["llm_pre_prompt"] != "":
+        llm_pre_prompt = lmms_eval_specific_kwargs["llm_pre_prompt"]
+    else:
+        llm_pre_prompt = ""
+    if "llm_post_prompt" in lmms_eval_specific_kwargs and lmms_eval_specific_kwargs["llm_post_prompt"] != "":
+        llm_post_prompt = lmms_eval_specific_kwargs["llm_post_prompt"]
+    else:
+        llm_post_prompt = ""
+
+    # read DP and set the prompt
+    DP_html_path = item["file_path"].replace("/v3.1/","/v3.1/dp_result/html/") # TODO: v3.1은 bench version update되면 수정해야함. 하드코딩된 부분을 추후 외부에서 입력하도록 수정 필요.
+    html_text = _read_DP_HTML(DP_html_path)
+
+    context_dict = {
+        "schema": schema_text,
+        "vlm_user_prompt": vlm_user_prompt,
+        "llm_pre_prompt": llm_pre_prompt,
+        "llm_post_prompt": llm_post_prompt,
+        "vlm_output": html_text
+    }
+
+    return json.dumps(context_dict) # string타입만 가능하므로 json.dumps로 우회
+
 
 def KIE_bench_doc_to_target(item):
     # UpScore 계산에는 사용하지 않습니다.

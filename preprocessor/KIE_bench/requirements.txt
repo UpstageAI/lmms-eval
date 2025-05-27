@@ -1,0 +1,4 @@
+dp-pipeline @ git+ssh://git@github.com/UpstageAI/dp-pipeline.git
+hydra-core==1.3.2
+p_tqdm==1.4.2
+pdf2image
